@@ -97,14 +97,14 @@ kb = pd.read_csv(f'{dataset_dir}/train.txt', sep='\t', names=['e1', 'r', 'e2'])
 G = create_graph(kb)
 
 print('start cases')
-cases = memory.create_memory_cases(kb, G, cutoff=cutoff, max_relations=max_relations, cores=cores)
+cases = memory.create_memory_cases(G, cutoff=cutoff, max_relations=max_relations, cores=cores)
 print('start similarity')
 sim_mat, node_ids = memory.create_similarity(G, sparse=False)
 #
 # print('dumping')
-pickle.dump(cases, open(f'{dataset_dir}/memory_cases.pkl', 'wb'))
-pickle.dump(node_ids, open(f'{dataset_dir}/node_ids.pkl', 'wb'))
-np.save('data/sim_mat.npy', sim_mat)
+# pickle.dump(cases, open(f'{dataset_dir}/memory_cases.pkl', 'wb'))
+# pickle.dump(node_ids, open(f'{dataset_dir}/node_ids.pkl', 'wb'))
+# np.save('data/sim_mat.npy', sim_mat)
 
 
 # sim_mat = np.load('data/sim_mat.npy')
@@ -133,6 +133,7 @@ for i in range(len(kb_test)):
     answer = get_end_node(G, q_node1, paths, count_answers=1)
 
     is_correct = q_node2 in answer
+    correct += is_correct
     count_in_train = np.sum(kb.e1 == q_node1)
     stats.append([q_node1, q_relation, count_in_train, is_correct])
     if i % 100 == 0:
@@ -147,6 +148,12 @@ df = pd.DataFrame(stats, columns = ['e1', 'r', 'count', 'is_correct'])
 z = df.groupby('count').apply(lambda x:x['is_correct'].value_counts())
 
 
+v1 = pickle.load(open('data/v1_results.pkl', 'rb'))
 
+q_node1 = 'austerity.n.01'
+q_relation = '_derivationally_related_form'
+q_node2 = 'nonindulgent.a.01'
 
+key = (q_node1, q_relation)
+v1[key]
 
