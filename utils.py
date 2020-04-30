@@ -1,16 +1,26 @@
 import multiprocessing as mp
 from functools import partial
+import time
 
 
-def run_function_on_list(func, list_data, single_core=False, **kwargs):
+def run_function_on_list(func, list_data, cores=1, **kwargs):
     fn = partial(func, **kwargs)
-    if single_core:
+    if cores == 1:
         out = [fn(val) for val in list_data]
     else:
-        num_workers = mp.cpu_count()
-        pool = mp.Pool(num_workers)
+        pool = mp.Pool(cores)
 
         out = pool.map(fn, list_data)
         pool.close()
 
     return out
+
+
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        print(f'{method.__name__}, done in {te - ts}.')
+        return result
+    return timed
