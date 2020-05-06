@@ -2,7 +2,7 @@ import networkx as nx
 import pandas as pd
 
 
-def create_graph(kb, add_inverse=True):
+def create_graph(kb, add_inverse=True, add_inverse_name=True):
     G = nx.DiGraph()
     for row in kb.itertuples():
         if G.has_edge(row.e1, row.e2):
@@ -11,7 +11,7 @@ def create_graph(kb, add_inverse=True):
             G.add_edge(row.e1, row.e2, relations={row.r})
 
         if add_inverse:
-            inv_r = row.r + '_inv'
+            inv_r = row.r + '_inv' if add_inverse_name else row.r
             if G.has_edge(row.e2, row.e1):
                 G.get_edge_data(row.e2, row.e1)['relations'].add(inv_r)
             else:
