@@ -71,89 +71,88 @@ def get_nodes_at_path_end(G, start_node, path):
     return end_nodes
 
 
-def get_end_node(G, node, paths, count_answers=1):
+def get_end_node(G, q_node, paths, count_answers=1):
     # paths should be sorted
     answers = []
     for path in paths:
-        end_nodes = get_nodes_at_path_end(G, node, path)
-        answers.extend(end_nodes)
-        if len(answers) >= count_answers:
-            return answers[:count_answers]
+        end_nodes = get_nodes_at_path_end(G, q_node, path)
+
+        for end_node in end_nodes:
+            answers.append(end_node)
+            if len(answers) >= count_answers:
+                return answers[:count_answers]
 
     return answers
 
 
-def run_inference(q_node, q_relation, G, sim_mat, cases, count_answers=1, top_k=5):
-    to_reuse = retreive_nodes(q_node, q_relation, sim_mat, node_ids, G, top_k=top_k)
-    paths = get_paths_reuse(G, to_reuse, q_relation, cases)
-    answer = get_end_node(G, q_node, paths, count_answers=count_answers)
-    return answer
+def get_answer_rank(G, q_node, target_node, paths, all_relations):
+    """
+
+    :param G:
+    :param q_node:
+    :param target_node:
+    :param paths:
+    :param all_relations: because same relation may occure multiple times, we will not count them for evaluation
+    :return:
+    """
+    # paths should be sorted
+    #TODO check how many paths exist per q_node. If many, than will be not effective
+
+    rank = 0
+    for path in paths:
+        end_nodes = get_nodes_at_path_end(G, q_node, path)
+        for end_node in end_nodes:
+            if end_node == target_node:
+                return rank
+            if end_node not in all_relations:
+                rank += 1
+    return len(G.nodes)
 
 
-dataset_dir = 'data/WN18RR' # FB15k-237
-
-print('load data')
-kb = pd.read_csv(f'{dataset_dir}/train.txt', sep='\t', names=['e1', 'r', 'e2'])
-G = create_graph(kb)
-
-print('start cases')
-cases = memory.create_memory_cases(G, cutoff=cutoff, max_relations=max_relations, cores=cores)
-print('start similarity')
-sim_mat, node_ids = memory.create_similarity(G, sparse=False)
-#
-# print('dumping')
-# pickle.dump(cases, open(f'{dataset_dir}/memory_cases.pkl', 'wb'))
-# pickle.dump(node_ids, open(f'{dataset_dir}/node_ids.pkl', 'wb'))
-# np.save('data/sim_mat.npy', sim_mat)
-
-
-# sim_mat = np.load('data/sim_mat.npy')
-# cases = pickle.load(open('data/memory_cases.pkl', 'rb'))
-# node_ids = pickle.load(open('data/node_ids.pkl', 'rb'))
-
-
-
-kb_test = pd.read_csv('data/WN18RR/valid.txt', sep='\t', names=['e1', 'r', 'e2'])
-print(len(kb_test))
-correct = 0
-er = 0
-
-stats = []
-for i in range(len(kb_test)):
-
-    q_node1 = kb_test.iloc[i]['e1']
-    q_relation = kb_test.iloc[i]['r']
-    q_node2 = kb_test.iloc[i]['e2']
-    if q_node1 not in G or q_node2 not in G:
-        er += 1
-        continue
-
-    to_reuse = retreive_nodes(q_node1, q_relation, sim_mat, node_ids, G, top_k=top_k)
-    paths = get_paths_reuse(G, to_reuse, q_relation, cases)
-    answer = get_end_node(G, q_node1, paths, count_answers=1)
-
-    is_correct = q_node2 in answer
-    correct += is_correct
-    count_in_train = np.sum(kb.e1 == q_node1)
-    stats.append([q_node1, q_relation, count_in_train, is_correct])
-    if i % 100 == 0:
-        print(i)
-
-print(correct, er)
+def make_relations_kb(*datasets):
+    # creates set of connections per (entity, relation), because there can multiple. So in evaluation we don't mix up
+    vocab = defaultdict(set)
+    for dataset in datasets:
+        for row in dataset.itertuples():
+            vocab[(row.e1, row.r)].add(row.e2)
+    return vocab
 
 
 
-df = pd.DataFrame(stats, columns = ['e1', 'r', 'count', 'is_correct'])
+if __name__ == '__main__':
 
-z = df.groupby('count').apply(lambda x:x['is_correct'].value_counts())
+    dataset_dir = 'data/WN18RR/text' # FB15k-237
+
+    print('load data')
+    train = pd.read_csv(f'{dataset_dir}/train.txt', sep='\t', names=['e1', 'r', 'e2'])
+    valid = pd.read_csv(f'{dataset_dir}/valid.txt', sep='\t', names=['e1', 'r', 'e2'])
+
+    relations_kb = make_relations_kb(train, valid)
+    G = create_graph(train)
+    valid = valid.loc[valid.apply(lambda x: x.e1 in G and x.e2 in G, axis=1)]  # filter
+    print('start cases')
+    cases = memory.create_memory_cases(G, cutoff=cutoff, max_relations=max_relations, cores=cores)
+    print('start similarity')
+    sim_mat, node_ids = memory.create_similarity(G, sparse=False)
+
+    #
+    # print('dumping')
+    # pickle.dump(cases, open(f'{dataset_dir}/memory_cases.pkl', 'wb'))
+    # pickle.dump(node_ids, open(f'{dataset_dir}/node_ids.pkl', 'wb'))
+    # np.save('data/sim_mat.npy', sim_mat)
 
 
-v1 = pickle.load(open('data/v1_results.pkl', 'rb'))
+    # sim_mat = np.load('data/sim_mat.npy')
+    # cases = pickle.load(open('data/memory_cases.pkl', 'rb'))
+    # node_ids = pickle.load(open('data/node_ids.pkl', 'rb'))
 
-q_node1 = 'austerity.n.01'
-q_relation = '_derivationally_related_form'
-q_node2 = 'nonindulgent.a.01'
+    ranks = []
+    for row in valid.itertuples():
+        q_node1, q_relation, q_node2 = row.e1, row.r, row.e2
+        to_reuse = retreive_nodes(q_node1, q_relation, sim_mat, node_ids, G, top_k=top_k)
+        paths = get_paths_reuse(G, to_reuse, q_relation, cases)
+        rank = get_answer_rank(G, q_node1, q_node2, paths, relations_kb)
+        ranks.append(rank)
 
-key = (q_node1, q_relation)
-v1[key]
-
+        if row.Index % 500 == 0:
+            print(row.Index)
