@@ -1,13 +1,13 @@
 import numpy as np
 import pandas as pd
 import copy
-import graph_utils as gutils
+import graph as gutils
 import matplotlib.pyplot as plt
 import seaborn as sns
 from collections import defaultdict
 
 
-kb = pd.read_csv('data/FB15k-237/train.txt', sep='\t', names = ['e1', 'r', 'e2'])
+kb = pd.read_csv('../data/FB15k-237/train.txt', sep='\t', names = ['e1', 'r', 'e2'])
 valid = pd.read_csv('data/WN18RR/valid.txt', sep='\t', names = ['e1', 'r', 'e2'])
 
 

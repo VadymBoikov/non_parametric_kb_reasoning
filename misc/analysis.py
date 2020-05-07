@@ -1,11 +1,11 @@
 import numpy as np
 import pandas as pd
 import copy
-import graph_utils
+import graph
 import networkx as nx
 
 
-data_dir = 'data/WN18RR/original'
+data_dir = '../data/WN18RR/original'
 # data_dir = 'data/FB15k-237'
 
 kb = pd.read_csv(f'{data_dir}/train.txt', sep='\t', names = ['e1', 'r', 'e2'])
@@ -39,7 +39,7 @@ print(valid.loc[(valid.e1 == e1) & (valid.r == r)])  # 1-> 114, 0 ->34
 
 #%%can we access valid e2 through others paths in train data
 
-G = graph_utils.create_graph(kb)
+G = graph.create_graph(kb)
 non_exist = []
 for i, row in enumerate(valid.itertuples()):
     try:
