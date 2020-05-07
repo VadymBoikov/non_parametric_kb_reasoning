@@ -1,5 +1,4 @@
 import networkx as nx
-import pandas as pd
 
 
 def create_graph(kb, add_inverse=True, add_inverse_name=True):

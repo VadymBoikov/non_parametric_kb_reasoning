@@ -4,10 +4,9 @@ import numpy as np
 
 import utils
 from graph import is_relation_exist, get_nodes_by_relation
-from main import top_k
 
 
-def retreive_nodes(q_node, q_relation, sim_mat, node_ids, G, top_k=10):
+def retreive_nodes(q_node, q_relation, sim_mat, node_ids, G, top_k=5):
     position_names = {v:k for k,v in node_ids.items()}
     node_pos = node_ids[q_node]
     # check for sparsity
@@ -103,7 +102,8 @@ def get_answer_rank(G, q_node, target_node, paths, all_relations):
 
 
 @utils.timeit
-def pipeline(valid, G, sim_mat, node_ids, cases, relations_kb, type='tail'):
+def pipeline(valid, G, sim_mat, node_ids, cases, relations_kb, top_k=5, type='tail'):
+    #TODO optimize to make in parallel without data move
     ranks = []
     for row in valid.itertuples():
         assert type in ['head', 'tail']

@@ -21,6 +21,6 @@ def timeit(method):
         ts = time.time()
         result = method(*args, **kw)
         te = time.time()
-        print(f'{method.__name__}, done in {te - ts}.')
+        print(f'{method.__name__}, done in {round(te - ts, 2)}.')
         return result
     return timed
