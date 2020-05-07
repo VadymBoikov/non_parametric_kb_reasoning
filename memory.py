@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import numpy as np
 import networkx as nx
 import utils
@@ -6,16 +8,16 @@ from itertools import product
 import pandas as pd
 
 
-def get_relation_cases(edge, graph, cutoff, max_relations):
+def get_relation_cases(edge, G, cutoff, max_relations):
     # extract cases for one relation 
     u,v = edge
-    path_generator = nx.all_simple_paths(graph, source=u, target=v, cutoff=cutoff)
-    cases = set() # one node can have many equal relations
+    path_generator = nx.all_simple_paths(G, source=u, target=v, cutoff=cutoff)
+    cases = set()  # one node can have many equal relations
     for path in path_generator:
         relation_paths = []
         for i_step in range(len(path) - 1):
             # 2 nodes can have multiple relations
-            edge_relations = graph.get_edge_data(path[i_step], path[i_step+1])['relations']
+            edge_relations = G.get_edge_data(path[i_step], path[i_step + 1])['relations']
             relation_paths.append(edge_relations)
 
         for i in product(*relation_paths):  # all combination for relations in paths
@@ -27,15 +29,15 @@ def get_relation_cases(edge, graph, cutoff, max_relations):
 
 
 @utils.timeit
-def create_memory_cases(graph, cutoff, max_relations, cores=1):
-    edges = graph.edges
-    cases_list = utils.run_function_on_list(get_relation_cases, edges, graph=graph,
+def create_memory_cases(G, cutoff, max_relations, cores=1):
+    edges = G.edges
+    cases_list = utils.run_function_on_list(get_relation_cases, edges, G=G,
                                             cutoff=cutoff, max_relations=max_relations, cores=cores)
     cases = {}
 
     for i, row in enumerate(edges):
         u, v = row
-        for relation in graph.get_edge_data(u,v)['relations']:
+        for relation in G.get_edge_data(u, v)['relations']:
             name = (u, relation, v)
             cases[name] = cases_list[i]
     return cases
@@ -70,3 +72,12 @@ def create_similarity(G, sparse=False):
 
     dot_product = node_embeddings.dot(node_embeddings.T)
     return dot_product, node_positions
+
+
+def make_relations_kb(*datasets):
+    # creates set of connections per (entity, relation), because there can multiple. So in evaluation we don't mix up
+    vocab = defaultdict(set)
+    for dataset in datasets:
+        for row in dataset.itertuples():
+            vocab[(row.e1, row.r)].add(row.e2)
+    return vocab
